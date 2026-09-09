@@ -2,12 +2,12 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local hasCircleCompass = false
 local hasBarCompass = false
 
--- ✅ متغیرهای گرسنگی و تشنگی
-local hunger = 3
-local thirst = 3
+-- ✅ متغیرهای گرسنگی و تشنگی (بدون مقدار پیش‌فرض ثابت، کاملاً وابسته به Metadata)
+local hunger = nil
+local thirst = nil
 
 local cruiseControlActive = false
-local isLoggedIn = false  -- ✅ اضافه شد
+local isLoggedIn = false
 
 local playerInCar = false 
 local vehicle = nil
@@ -40,32 +40,63 @@ local function updateCompassItems()
     SendNUIMessage({ action = "compassConfig", circle = circle, bar = bar })
 end
 
+-- ✅ لود شدن کامل و فوری اطلاعات از Metadata دقیقاً مثل qb-hud
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    Wait(500)
     isLoggedIn = true
     local PlayerData = QBCore.Functions.GetPlayerData()
+    
     if PlayerData and PlayerData.metadata then
         hunger = PlayerData.metadata.hunger or 100
         thirst = PlayerData.metadata.thirst or 100
+    else
+        hunger = 100
+        thirst = 100
     end
+    
     updateCompassItems()
+    
+    -- ✅ ارسال فوری وضعیت به NUI برای جلوگیری از نمایش مقادیر پیش‌فرض یا قدیمی
+    SendNUIMessage({
+        action = "refreshStatus",
+        health = math.floor(GetEntityHealth(PlayerPedId()) - 100),
+        armor = GetPedArmour(PlayerPedId()),
+        food = hunger,
+        water = thirst,
+        oxy = false,
+        stress = PlayerData.metadata.stress or 0,
+        stamina = 100,
+        nitrous = 0,
+        harness = 0,
+        drug = 0,
+        alcohol = 0,
+    })
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
-    isLoggedIn = false  -- ✅ اضافه شد
+    isLoggedIn = false
+    hunger = nil
+    thirst = nil
 end)
 
 RegisterNetEvent('QBCore:Player:SetPlayerData', function(PlayerData)
+    if not isLoggedIn then return end
     if PlayerData and PlayerData.metadata then
-        hunger = PlayerData.metadata.hunger or hunger
-        thirst = PlayerData.metadata.thirst or thirst
+        hunger = PlayerData.metadata.hunger
+        thirst = PlayerData.metadata.thirst
     end
     updateCompassItems()
 end)
 
+-- ✅ هندل کردن ری‌استارت اسکریپت وقتی پلیر قبلاً لاگین است
 AddEventHandler('onResourceStart', function(resource)
     if resource == GetCurrentResourceName() then
-        Wait(1000)
+        Wait(500)
+        local PlayerData = QBCore.Functions.GetPlayerData()
+        if PlayerData and PlayerData.metadata then
+            isLoggedIn = true
+            hunger = PlayerData.metadata.hunger or 100
+            thirst = PlayerData.metadata.thirst or 100
+        end
         updateCompassItems()
     end
 end)
@@ -74,65 +105,61 @@ end)
 Citizen.CreateThread(function()
     while true do 
         Citizen.Wait(1000)
-        local player = PlayerPedId()
-        vehicle = GetVehiclePedIsIn(player)
-        local oxy = false
-        if IsPedSwimmingUnderWater(player) then
-            oxy = math.ceil(GetPlayerUnderwaterTimeRemaining(PlayerId()) * 10)
-            if oxy < 1 then
-                oxy = 1
-            end
+        
+        if not isLoggedIn then
+            -- تا زمانی که بازیکن لود نشده، HUD را آپدیت نمی‌کنیم یا مقادیر را صفر می‌فرستیم
+            SendNUIMessage({
+                action = "refreshStatus",
+                health = 0, armor = 0, food = 0, water = 0,
+                oxy = false, stress = 0, stamina = 0, nitrous = 0,
+                harness = 0, drug = 0, alcohol = 0,
+            })
         else
-            oxy = false
-        end
+            local player = PlayerPedId()
+            vehicle = GetVehiclePedIsIn(player)
+            local oxy = false
+            if IsPedSwimmingUnderWater(player) then
+                oxy = math.ceil(GetPlayerUnderwaterTimeRemaining(PlayerId()) * 10)
+                if oxy < 1 then oxy = 1 end
+            end
 
-        local health = math.floor(GetEntityHealth(player) - 100)
-        if health < 1 then
-            health = 1
-        end
-        if health == 100 and IsEntityPlayingAnim(player, 'misslamar1dead_body', 'dead_idle', 3) then
-            health = 1
-        end
-        local armor = GetPedArmour(player)
-        if armor < 1 then
-            armor = 0  -- ✅ وقتی 0 هست، در HUD مخفی می‌شه
-        end
-        
-        -- ✅ محدود کردن hunger و thirst بین 0 تا 100
-        local clampedHunger = math.max(0, math.min(100, hunger or 0))
-        local clampedThirst = math.max(0, math.min(100, thirst or 0))
-        
-        SendNUIMessage({
-            action = "refreshStatus",
-            health = health,
-            armor = armor,
-            food = clampedHunger,      -- ✅ اصلاح شد
-            water = clampedThirst,     -- ✅ اصلاح شد
-            oxy = oxy,
-            stress = stress or 0,
-            stamina = getHudStamina(player),
-            nitrous = getNitrousLevel(),
-            harness = getHarnessLevel(),
-            drug = drugLevel or 0,        -- ← اضافه شد
-            alcohol = alcoholLevel or 0,  -- ← اضافه شد
-        })
+            local health = math.floor(GetEntityHealth(player) - 100)
+            if health < 1 then health = 1 end
+            if health == 100 and IsEntityPlayingAnim(player, 'misslamar1dead_body', 'dead_idle', 3) then
+                health = 1
+            end
+            local armor = GetPedArmour(player)
+            if armor < 1 then armor = 0 end
+            
+            local clampedHunger = math.max(0, math.min(100, hunger or 100))
+            local clampedThirst = math.max(0, math.min(100, thirst or 100))
+            
+            SendNUIMessage({
+                action = "refreshStatus",
+                health = health,
+                armor = armor,
+                food = clampedHunger,
+                water = clampedThirst,
+                oxy = oxy,
+                stress = stress or 0,
+                stamina = getHudStamina(player),
+                nitrous = getNitrousLevel(),
+                harness = getHarnessLevel(),
+                drug = drugLevel or 0,
+                alcohol = alcoholLevel or 0,
+            })
 
-        if vehicle ~= 0 and not blackbar then 
-            SendNUIMessage({
-                action = "carHud", 
-                open = true
-            })
-            playerInCar = true 
-            roundedRadar()
-        else 
-            seatbelt = false
-            SendNUIMessage({
-                action = "carHud", 
-                open = false
-            })
-            playerInCar = false 
-            DisplayRadar(false)
-        end     
+            if vehicle ~= 0 and not blackbar then 
+                SendNUIMessage({ action = "carHud", open = true })
+                playerInCar = true 
+                roundedRadar()
+            else 
+                seatbelt = false
+                SendNUIMessage({ action = "carHud", open = false })
+                playerInCar = false 
+                DisplayRadar(false)
+            end
+        end
     end 
 end)
 
@@ -583,7 +610,6 @@ Citizen.CreateThread(function()
             
             local value = SendPursuitValue()
             
-            -- ✅ محاسبه ارتفاع برای هلیکوپتر و هواپیما
             local altitude = 0
             if IsThisModelAHeli(modelHash) or IsThisModelAPlane(modelHash) then
                 local coords = GetEntityCoords(PlayerPedId())
@@ -601,7 +627,7 @@ Citizen.CreateThread(function()
                 doorsLocked = GetVehicleDoorLockStatus(vehicle) >= 2,
                 engineOn = IsVehicleEngineOn(vehicle),
                 altitude = altitude,
-                cruise = cruiseControlActive  -- ✅ اضافه شد
+                cruise = cruiseControlActive
             })
         end
     end
@@ -627,10 +653,10 @@ function GetVehicleIn(vehicle)
 end
 
 -- =========================================================
--- BELT ALARM SYSTEM - اضافه شده به qrt-hud
+-- BELT ALARM SYSTEM
 -- =========================================================
 local beltAlarmCooldown = 0
-local beltAlarmInterval = 3000  -- هر 3 ثانیه یکبار (قابل تنظیم)
+local beltAlarmInterval = 3000
 
 CreateThread(function()
     while true do
@@ -642,14 +668,12 @@ CreateThread(function()
             local veh = GetVehiclePedIsIn(ped, false)
             local vehClass = GetVehicleClass(veh)
             
-            -- فقط برای خودروهای معمولی (نه هلیکوپتر/هواپیما/قایق/دوچرخه)
             if not seatbelt and IsThisModelACar(GetEntityModel(veh)) then
                 if beltAlarmCooldown <= 0 then
                     TriggerEvent("InteractSound_CL:PlayOnOne", "beltalarm", 0.6)
                     beltAlarmCooldown = beltAlarmInterval
                 end
             else
-                -- ریست cooldown وقتی کمربند بسته شود یا از خودرو پیاده شوید
                 beltAlarmCooldown = 0
             end
         else
@@ -663,10 +687,14 @@ CreateThread(function()
 end)
 
 RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst)
-    -- به‌روزرسانی مستقیم متغیرهای محلی بدون ارسال درخواست اضافی به سرور
-    -- این کار از سربار شبکه و تداخل با سیستم ذخیره‌سازی qb-core جلوگیری می‌کند
-    hunger = newHunger
-    thirst = newThirst
+    if hunger ~= newHunger then
+        hunger = newHunger
+        TriggerServerEvent('hud:server:UpdateHunger', newHunger)
+    end
+    if thirst ~= newThirst then
+        thirst = newThirst
+        TriggerServerEvent('hud:server:UpdateThirst', newThirst)
+    end
 end)
 
 RegisterCommand('cruise', function()
