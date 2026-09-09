@@ -55,7 +55,13 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     
     updateCompassItems()
     
-    -- ✅ ارسال فوری وضعیت به NUI برای جلوگیری از نمایش مقادیر پیش‌فرض یا قدیمی
+    -- ✅ نمایش مجدد HUD بعد از لود
+    SendNUIMessage({
+        action = "toggleHud",
+        show = true
+    })
+    
+    -- ✅ ارسال فوری وضعیت به NUI
     SendNUIMessage({
         action = "refreshStatus",
         health = math.floor(GetEntityHealth(PlayerPedId()) - 100),
@@ -76,6 +82,12 @@ RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     isLoggedIn = false
     hunger = nil
     thirst = nil
+    
+    -- ✅ مخفی کردن کامل HUD مثل qb-hud
+    SendNUIMessage({
+        action = "toggleHud",
+        show = false
+    })
 end)
 
 RegisterNetEvent('QBCore:Player:SetPlayerData', function(PlayerData)
