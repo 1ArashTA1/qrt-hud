@@ -548,8 +548,6 @@ if (event.data.action === 'radioConnected' && event.data.wireless !== undefined)
 
 });
 
-
-
 window.addEventListener("message", function (event) {
 
   if (event.data.action == "refreshStatus") {
@@ -766,8 +764,35 @@ window.addEventListener("message", function (event) {
     } else {
       $("#god").css("display", "none");
     }
+  } else if (event.data.action == "toggleHud") {
+  if (event.data.show === false) {
+    // مخفی کردن کامل HUD
+    $("._container_1hwi9_2").css("display", "none");
+    $("#carhud").css("display", "none");
+    $("#pusula").css("display", "none");
+    $(".crosshair").css("display", "none");
+    $("#parachute").css("display", "none");
+    $("#dev").css("display", "none");
+    $("#debug").css("display", "none");
+    $("#god").css("display", "none");
+    $("#lowfuel").css("display", "none");
+    $("#engine").css("display", "none");
+    
+    // مخفی کردن آیکون‌های status
+    $('.icon-cont[name=radio]').parent().parent().css("display", "none");
+    $('.icon-cont[name=drug]').parent().parent().css("display", "none");
+    $('.icon-cont[name=alcohol]').parent().parent().css("display", "none");
+  } else {
+    // ✅ فقط المان‌های HUD را نمایش بده، نه منوی تنظیمات!
+    // $("._container_1hwi9_2").css("display", "block"); <-- این خط را حذف یا کامنت کن
+    
+    // نمایش المان‌های اصلی HUD (health, armor, food, water)
+    $(".icon-cont[name=health]").parent().parent().css("display", "block");
+    $(".icon-cont[name=armor]").parent().parent().css("display", "block");
+    $(".icon-cont[name=food]").parent().parent().css("display", "block");
+    $(".icon-cont[name=water]").parent().parent().css("display", "block");
   }
-  else if (event.data.action == "lowfuel") {
+} else if (event.data.action == "lowfuel") {
     if (event.data.active) {
       $("#lowfuel").css("display", "block");
     } else {
