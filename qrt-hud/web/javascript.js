@@ -769,7 +769,7 @@ window.addEventListener("message", function (event) {
     // مخفی کردن کامل HUD
     $("._container_1hwi9_2").css("display", "none");
     $("#carhud").css("display", "none");
-    $("#pusula").css("display", "none");
+    $("#pusula").css("display", "none");  // ✅ نقشه
     $(".crosshair").css("display", "none");
     $("#parachute").css("display", "none");
     $("#dev").css("display", "none");
@@ -783,16 +783,17 @@ window.addEventListener("message", function (event) {
     $('.icon-cont[name=drug]').parent().parent().css("display", "none");
     $('.icon-cont[name=alcohol]').parent().parent().css("display", "none");
   } else {
-    // ✅ فقط المان‌های HUD را نمایش بده، نه منوی تنظیمات!
-    // $("._container_1hwi9_2").css("display", "block"); <-- این خط را حذف یا کامنت کن
-    
-    // نمایش المان‌های اصلی HUD (health, armor, food, water)
+    // ✅ نمایش المان‌های اصلی HUD
     $(".icon-cont[name=health]").parent().parent().css("display", "block");
     $(".icon-cont[name=armor]").parent().parent().css("display", "block");
     $(".icon-cont[name=food]").parent().parent().css("display", "block");
     $(".icon-cont[name=water]").parent().parent().css("display", "block");
+    
+    // ✅ مخفی نگه داشتن نقشه تا زمانی که در ماشین نباشد
+    $("#pusula").css("display", "none");
+    $("#carhud").css("display", "none");
   }
-} else if (event.data.action == "lowfuel") {
+}else if (event.data.action == "lowfuel") {
     if (event.data.active) {
       $("#lowfuel").css("display", "block");
     } else {
