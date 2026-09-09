@@ -3,8 +3,8 @@ local hasCircleCompass = false
 local hasBarCompass = false
 
 -- ✅ متغیرهای گرسنگی و تشنگی
-local hunger = 100
-local thirst = 100
+local hunger = 3
+local thirst = 3
 
 local cruiseControlActive = false
 local isLoggedIn = false  -- ✅ اضافه شد
@@ -663,15 +663,10 @@ CreateThread(function()
 end)
 
 RegisterNetEvent('hud:client:UpdateNeeds', function(newHunger, newThirst)
-    -- فقط وقتی مقدار تغییر کرده به سرور event بزن (بهینه‌سازی)
-    if hunger ~= newHunger then
-        hunger = newHunger
-        TriggerServerEvent('hud:server:UpdateHunger', newHunger)
-    end
-    if thirst ~= newThirst then
-        thirst = newThirst
-        TriggerServerEvent('hud:server:UpdateThirst', newThirst)
-    end
+    -- به‌روزرسانی مستقیم متغیرهای محلی بدون ارسال درخواست اضافی به سرور
+    -- این کار از سربار شبکه و تداخل با سیستم ذخیره‌سازی qb-core جلوگیری می‌کند
+    hunger = newHunger
+    thirst = newThirst
 end)
 
 RegisterCommand('cruise', function()
